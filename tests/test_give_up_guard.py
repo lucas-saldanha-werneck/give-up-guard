@@ -39,6 +39,29 @@ CASES = [
     ("headless skipped", msg("Not checked: anything."), {"CLAUDE_CODE_ENTRYPOINT": "sdk-cli"}, None),
     ("headless opt-in", msg("Not checked: anything."), {"CLAUDE_CODE_ENTRYPOINT": "sdk-cli", "GIVE_UP_GUARD_HEADLESS": "1"}, "You listed"),
     ("bad stdin", "not json", None, None),
+    # an exemption only counts near the claim it excuses
+    ("why_not elsewhere doesn't excuse", msg("The build requires Python 3.8. Not checked: the production deploy log."),
+     None, "You listed something as not checked"),
+    ("tried elsewhere doesn't excuse", msg("I searched for the README. I cannot upload the artifact."),
+     None, "Before handing this task back"),
+    ("why_not in next sentence", msg("Not checked: the deploy log. Only you can open that dashboard."), None, None),
+    ("tried label line anywhere", msg("Routes tried: API (403), CLI (missing).\n\nSo I can't upload the file. "
+                                      "You'll need to open the site."), None, None),
+    ("searched label line anywhere", msg("- Searched in: the config, the .env\n\nSome notes.\n\nWhat is your email?"),
+     None, None),
+    # asking for a secret is not a cue to go and fetch it (opt in with GIVE_UP_GUARD_SECRETS=1)
+    ("en asks password let through", msg("What is your password for the dashboard?"), None, None),
+    ("en asks api key let through", msg("Can you share the API key?"), None, None),
+    ("pt asks senha let through", msg("Me passa a senha do painel."), None, None),
+    ("secret asks opt-in", msg("What is your password for the dashboard?"), {"GIVE_UP_GUARD_SECRETS": "1"},
+     "Before asking the user for this secret"),
+    ("non-secret ask still blocked", msg("What is your username on the server?"), None, "Before asking the user for this data"),
+    # fenced code blocks are quotes too
+    ("backtick fence ignored", msg("Example final answer:\n\n```\nDone.\nNot checked: the deploy log.\n```\n"), None, None),
+    ("tilde fence ignored", msg("Example:\n~~~text\nI can't upload the file. You'll need to open the site.\n~~~"), None, None),
+    ("long fence with inner fence ignored", msg("Example:\n````md\n```\nx\n```\nNot tested yet.\n````\nDone."), None, None),
+    ("unclosed fence ignored", msg("Example:\n```\nNot checked: the deploy log."), None, None),
+    ("text after a fence still counts", msg("```\nexample\n```\nNot checked: the deploy log."), None, "You listed"),
 ]
 
 
@@ -55,6 +78,26 @@ def main():
     with open(os.path.join(pdir, "es.json"), "w") as f:
         json.dump({"not_checked": ["no (verifique|comprobe)"]}, f)
     CASES.append(("extra language folder", msg("Listo. No verifiqué el log."), {"GIVE_UP_GUARD_PATTERNS": pdir}, "You listed"))
+    # a bad custom file or pattern must not disable the bundled patterns
+    def folder(name, content):
+        d = tempfile.mkdtemp()
+        with open(os.path.join(d, name), "w") as f:
+            f.write(content)
+        return {"GIVE_UP_GUARD_PATTERNS": d}
+    flags = folder("es.json", json.dumps({"not_checked": ["(?i)no comprobado"]}))
+    CASES.append(("inline flag pattern keeps bundled", msg("Not checked: the log."), flags, "You listed"))
+    CASES.append(("inline flag pattern works", msg("Listo. No comprobado el log."), flags, "You listed"))
+    CASES.append(("json list file is skipped", msg("Not checked: the log."), folder("x.json", "[1, 2]"), "You listed"))
+    CASES.append(("non-string pattern is skipped", msg("Not checked: the log."),
+                  folder("x.json", json.dumps({"not_checked": [123], "why_not": [None]})), "You listed"))
+    CASES.append(("string instead of list is one pattern", msg("Done. Ran the tests: 12 passed."),
+                  folder("x.json", json.dumps({"not_checked": "no comprobado"})), None))
+
+    # the default data reason must not send Claude to a password manager
+    code, out = run(msg("What is your email for the account?"))
+    ok = code == 0 and out and "password manager" not in out["reason"]
+    print(("PASS" if ok else "FAIL"), "-", "data reason doesn't mention a password manager", "" if ok else f"(got {out!r})")
+    fails += not ok
 
     for name, payload, env, want in CASES:
         if isinstance(payload, str):
@@ -68,7 +111,7 @@ def main():
                                                                and out.get("decision") == "block"))
         print(("PASS" if ok else "FAIL"), "-", name, "" if ok else f"(exit {code}, got {got!r})")
         fails += not ok
-    print(f"\n{len(CASES) - fails}/{len(CASES)} passed")
+    print(f"\n{len(CASES) + 1 - fails}/{len(CASES) + 1} passed")
     sys.exit(1 if fails else 0)
 
 

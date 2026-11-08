@@ -1,6 +1,6 @@
 {
   "name": "give-up-guard",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "A Stop hook that sends Claude back to work when it ends a turn giving up, claiming something doesn't exist, asking you for data, or listing things as not checked, without having looked first.",
   "author": {
     "name": "Lucas Saldanha Werneck",
