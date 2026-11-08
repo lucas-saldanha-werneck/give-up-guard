@@ -40,6 +40,15 @@
     "(send|give|tell) me your (email|login|username|password|token|key|account)",
     "can you (send|give|share) (me )?(your|the) (email|login|username|password|token|api key|key)"
   ],
+  "secret": [
+    "password",
+    "passphrase",
+    "token",
+    "\\bkey\\b",
+    "secret",
+    "credential",
+    "\\bpin\\b"
+  ],
   "not_checked": [
     "i (did not|didn'?t|have not|haven'?t) (check|verify|test|look at|run|open|confirm)",
     "not (yet )?(checked|verified|tested|confirmed)",

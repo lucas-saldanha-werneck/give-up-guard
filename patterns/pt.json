@@ -37,6 +37,14 @@
     "me (passa|manda|envia|informa|diz) (o|a|seu|sua) (e-?mail|login|usuario|senha|codigo|token|chave|cnpj|cpf)",
     "qual (e|eh) (o|a) (seu|sua) (e-?mail|login|usuario|senha|token|chave)"
   ],
+  "secret": [
+    "senha",
+    "token",
+    "chave",
+    "codigo",
+    "segredo",
+    "credencia"
+  ],
   "not_checked": [
     "nao (conferi|verifiquei|chequei|testei|olhei|rodei|abri|confirmei)"
   ],

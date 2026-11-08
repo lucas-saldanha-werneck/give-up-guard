@@ -13,7 +13,11 @@ The hook blocks the stop when the final answer does one of these things:
    the routes it tried. Steps only a human can do (captcha, 2FA, payment, QR code, biometrics,
    Touch ID, Face ID) are let through.
 2. It says a command, option or feature doesn't exist without saying where it looked.
-3. It asks you for data (email, login, token...) without saying where it looked first.
+3. It asks you for data (email, login, username...) without saying where it looked first. The
+   hook tells Claude to look in project files, notes, config and its tools. Asking you for a
+   secret (password, token, API key, PIN) is let through by default, so the hook never pushes
+   Claude to go and fetch a credential on its own. Set `GIVE_UP_GUARD_SECRETS=1` to check those
+   asks too.
 4. It lists something as not checked without saying why it can't be checked now.
 
 ## What Claude sees
@@ -69,6 +73,7 @@ flags like `(?i)` work.
 | `not_exists` | says something doesn't exist |
 | `searched` | says where it didn't find it (cancels rule 2) |
 | `asks_data` | asks the user for an email, login, token... |
+| `secret` | the data asked for is a secret (rule 3 skips it unless `GIVE_UP_GUARD_SECRETS=1`) |
 | `not_checked` | lists something as not checked |
 | `why_not` | gives a reason it can't be checked (cancels rule 4) |
 
@@ -82,12 +87,14 @@ Environment variables:
 | --- | --- |
 | `GIVE_UP_GUARD_PATTERNS` | extra pattern folders, as above |
 | `GIVE_UP_GUARD_HEADLESS=1` | also check `claude -p` runs, which are skipped by default |
+| `GIVE_UP_GUARD_SECRETS=1` | also block asks for a password, token or key. Claude is then told to look in the environment, a secrets file or a password manager it was given access to, if the task allows it, and never to print the secret |
 
 ## How it works
 
 When Claude tries to stop, the hook reads the final answer (`last_assistant_message`, or the last
-assistant text in the transcript if that field is missing). It removes text inside double quotes,
-curly double quotes and backticks, so quoting a phrase doesn't count. It then checks the four rules
+assistant text in the transcript if that field is missing). It removes fenced code blocks (three or
+more backticks or tildes, including a fence left open at the end), then text inside double quotes, curly double quotes and
+backticks, so quoting a phrase or an example doesn't count. It then checks the four rules
 in order and returns `{"decision": "block", "reason": ...}` for the first one that matches.
 
 A phrase that cancels a rule only counts near the claim it excuses: in the same sentence or line, or
