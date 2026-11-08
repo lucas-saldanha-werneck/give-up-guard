@@ -51,6 +51,8 @@ def pattern_dirs():
 
 
 def load_patterns():
+    # Each pattern is compiled and searched on its own, so inline flags like (?i) work and one bad
+    # file or pattern is skipped without touching the others.
     lists = {k: [] for k in KEYS}
     for d in pattern_dirs():
         for path in sorted(glob.glob(os.path.join(d, "*.json"))):
@@ -59,29 +61,57 @@ def load_patterns():
                     data = json.load(f)
             except Exception:
                 continue
+            if not isinstance(data, dict):
+                continue
             for k in KEYS:
-                for p in data.get(k, []) or []:
-                    try:
-                        re.compile(p)
-                        lists[k].append(p)
-                    except re.error:
+                v = data.get(k)
+                for p in ([v] if isinstance(v, str) else v if isinstance(v, list) else []):
+                    if not isinstance(p, str):
                         continue
-    return {k: (re.compile("|".join("(?:%s)" % p for p in v)) if v else None) for k, v in lists.items()}
+                    try:
+                        lists[k].append(re.compile(p))
+                    except Exception:
+                        continue
+    return lists
 
 
-def hit(rx, t):
-    return bool(rx and rx.search(t))
+def hit(rxs, t):
+    return any(rx.search(t) for rx in rxs)
+
+
+def units(t):
+    # Sentences and lines: an exemption has to sit in the same one as the claim, or the next one.
+    return [u for u in re.split(r"\n+|(?<=[.!?;])\s+", t) if u.strip()]
+
+
+def label_line(rxs, t):
+    # A line that starts with a label like "Routes tried:" or "Searched in:" covers the whole answer.
+    for line in t.splitlines():
+        s = line.lstrip(" \t-*#>+").strip()
+        for rx in rxs:
+            m = rx.match(s)
+            if m and ":" in s[:m.end() + 3]:
+                return True
+    return False
+
+
+def unexcused(claim, excuses, t):
+    us = units(t)
+    for i, u in enumerate(us):
+        if hit(claim, u) and not any(hit(rxs, " ".join(us[i:i + 2])) for rxs in excuses):
+            return True
+    return False
 
 
 def pick_reason(t, P):
-    tried = hit(P["tried"], t)
-    if hit(P["give_up"], t) and not tried and not hit(P["human_only"], t):
+    tried = [] if label_line(P["tried"], t) else [P["tried"]]
+    if tried and unexcused(P["give_up"], tried + [P["human_only"]], t):
         return REASON_GIVE_UP
-    if hit(P["not_exists"], t) and not tried and not hit(P["searched"], t):
+    if tried and not label_line(P["searched"], t) and unexcused(P["not_exists"], tried + [P["searched"]], t):
         return REASON_NOT_EXISTS
-    if hit(P["asks_data"], t) and not tried:
+    if tried and unexcused(P["asks_data"], tried, t):
         return REASON_ASKS
-    if hit(P["not_checked"], t) and not hit(P["why_not"], t):
+    if unexcused(P["not_checked"], [P["why_not"]], t):
         return REASON_NOT_CHECKED
     return None
 

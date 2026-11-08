@@ -57,8 +57,9 @@ To add a language or a phrase, put a file in `~/.config/give-up-guard/patterns/`
 }
 ```
 
-Every key is optional. Each one is a list of Python regular expressions, and a match on any of them
-counts.
+Every key is optional. Each one is a list of Python regular expressions (a single string counts as
+a list of one), and a match on any of them counts. Each pattern is matched on its own, so inline
+flags like `(?i)` work.
 
 | Key | Meaning |
 | --- | --- |
@@ -72,7 +73,8 @@ counts.
 | `why_not` | gives a reason it can't be checked (cancels rule 4) |
 
 The hook lowercases the text and strips accents before matching, so write `nao`, not `não`. A file
-that isn't valid JSON, or a pattern that isn't a valid regular expression, is skipped.
+that isn't a valid JSON object, or a pattern that isn't a valid regular expression, is skipped, and
+the other patterns still apply.
 
 Environment variables:
 
@@ -87,6 +89,11 @@ When Claude tries to stop, the hook reads the final answer (`last_assistant_mess
 assistant text in the transcript if that field is missing). It removes text inside double quotes,
 curly double quotes and backticks, so quoting a phrase doesn't count. It then checks the four rules
 in order and returns `{"decision": "block", "reason": ...}` for the first one that matches.
+
+A phrase that cancels a rule only counts near the claim it excuses: in the same sentence or line, or
+the one right after. So "The build requires Python 3.8. Not checked: the deploy log." is blocked,
+because "requires" explains something else. The exception is a line that starts with a label such as
+`Routes tried:` or `Searched in:`, which covers the whole answer.
 
 - It blocks at most once in a row. If Claude is already continuing because of a Stop hook
   (`stop_hook_active`), it does nothing, so it can't loop.
@@ -110,6 +117,8 @@ python3 tests/test_give_up_guard.py
 
 - It matches phrases, so it misses give-ups worded in ways the patterns don't cover, and it can
   block an answer that only looks like one. Add or narrow patterns in your own folder.
+- For a list under a heading like `Not checked:`, a reason in the first item also covers the
+  heading, so the other items are not checked one by one.
 - Tested on macOS in the terminal, including a real session where the hook blocked a stop. Not
   tested on Linux or Windows. On Windows the hook runs `python3`, which may not be on `PATH` there.
 - Not tested in the desktop app or the IDE extensions. The Claude Code docs say hooks fire there too.
