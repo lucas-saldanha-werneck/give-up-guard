@@ -18,7 +18,7 @@ lowercased and accents are stripped before matching, so write patterns without a
 Your settings live in <config dir>/config.json (or the file named by GIVE_UP_GUARD_CONFIG),
 created from config.example.json on first run (--seed, from SessionStart) and never overwritten,
 where <config dir> is $XDG_CONFIG_HOME/give-up-guard or ~/.config/give-up-guard. Plugin updates
-never touch that folder. Keys: headless, secrets (booleans), reasons (replace a reason text),
+never touch that folder. Keys: headless, secrets (true/false; null = use /config), reasons (replace a reason text),
 reason_suffix (appended to every reason). Env GIVE_UP_GUARD_HEADLESS / GIVE_UP_GUARD_SECRETS
 (1 or 0) win over the file; the file wins over the plugin's /config options.
 
@@ -72,7 +72,7 @@ def seed_config():
     Every value in the starter is the default, so it behaves like no file. True if it created the file."""
     path = config_path()
     try:
-        if os.path.lexists(path):
+        if not os.path.isabs(path) or os.path.lexists(path):  # a relative path would land in the project
             return False
         with open(os.path.join(os.path.dirname(HERE), "config.example.json"), "rb") as f:
             data = f.read()

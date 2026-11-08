@@ -122,6 +122,11 @@ def seed_checks():
     made = os.path.join(env["HOME"], ".config", "give-up-guard", "config.json")
     check("the Stop hook seeds too (first use)", os.path.exists(made) and read(made) == read(EXAMPLE))
 
+    proj = tempfile.mkdtemp()
+    r = subprocess.run([sys.executable, HOOK, "--seed"], capture_output=True, text=True, cwd=proj,
+                       env=seed_env(GIVE_UP_GUARD_CONFIG="rel-config.json"))
+    check("relative GIVE_UP_GUARD_CONFIG is not seeded into the project", r.returncode == 0 and os.listdir(proj) == [])
+
     # existing -> byte-identical, same mtime
     for body in (b'{"secrets": true}', b"{not json", b""):
         cdir = tempfile.mkdtemp()
