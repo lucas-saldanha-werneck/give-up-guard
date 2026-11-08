@@ -129,7 +129,7 @@ Other environment variables:
 | Variable | Effect |
 | --- | --- |
 | `GIVE_UP_GUARD_PATTERNS` | extra pattern folders, as above |
-| `GIVE_UP_GUARD_CONFIG` | path of the settings file, instead of the default above |
+| `GIVE_UP_GUARD_CONFIG` | path of the settings file, instead of the default above (absolute or starting with `~`; a relative path is ignored, so a project folder cannot bring its own settings) |
 
 ## How it works
 

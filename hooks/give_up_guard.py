@@ -57,13 +57,25 @@ REASONS = {"give_up": REASON_GIVE_UP, "not_exists": REASON_NOT_EXISTS, "asks_dat
            "asks_secret": REASON_ASKS_SECRET, "not_checked": REASON_NOT_CHECKED}
 
 
+def _abs_env(name):
+    """An env var naming a path, with ~ expanded; "" when unset or relative. A relative path would be
+    taken from the session's folder, so each project you open could bring its own settings."""
+    value = os.path.expanduser((os.environ.get(name) or "").strip())
+    return value if os.path.isabs(value) else ""
+
+
 def config_dir():
-    base = os.environ.get("XDG_CONFIG_HOME") or os.path.join(os.path.expanduser("~"), ".config")
+    base = _abs_env("XDG_CONFIG_HOME") or os.path.join(os.path.expanduser("~"), ".config")
     return os.path.join(base, "give-up-guard")
 
 
 def config_path():
-    return os.environ.get("GIVE_UP_GUARD_CONFIG") or os.path.join(config_dir(), "config.json")
+    return _abs_env("GIVE_UP_GUARD_CONFIG") or os.path.join(config_dir(), "config.json")
+
+
+def headless_skipped(cfg):
+    """Headless runs (`claude -p`) are skipped unless `headless` is on."""
+    return os.environ.get("CLAUDE_CODE_ENTRYPOINT") == "sdk-cli" and not switch(cfg, "headless", "check_headless")
 
 
 def seed_config():
@@ -72,7 +84,7 @@ def seed_config():
     Every value in the starter is the default, so it behaves like no file. True if it created the file."""
     path = config_path()
     try:
-        if not os.path.isabs(path) or os.path.lexists(path):  # a relative path would land in the project
+        if os.path.lexists(path):  # config_path() is always absolute
             return False
         with open(os.path.join(os.path.dirname(HERE), "config.example.json"), "rb") as f:
             data = f.read()
@@ -235,12 +247,12 @@ def main():
         d = json.load(sys.stdin)
         if d.get("stop_hook_active"):
             return
-        seed_config()  # in case the SessionStart hook has not run yet
         cfg = load_config()
         # Headless runs (`claude -p`) have no user to talk to; an extra turn would only
         # spoil the output a script reads. Turn on `headless` to check them too.
-        if os.environ.get("CLAUDE_CODE_ENTRYPOINT") == "sdk-cli" and not switch(cfg, "headless", "check_headless"):
+        if headless_skipped(cfg):
             return
+        seed_config()  # in case the SessionStart hook has not run yet
         # A quote is not a give-up: drop fenced code blocks (``` or ~~~, closed or running to the end),
         # then "...", “...” and `...`, before matching.
         t = re.sub(r"(?ms)^[ \t]*(`{3,}|~{3,})[^\n]*$.*?(?:^[ \t]*\1[`~]*[ \t]*$|\Z)", " ", norm(last_text(d)))
@@ -254,6 +266,10 @@ def main():
 
 if __name__ == "__main__":
     if sys.argv[1:] == ["--seed"]:  # SessionStart hook: create your settings file on first run
-        seed_config()
+        try:
+            if not headless_skipped(load_config()):  # a skipped `claude -p` run leaves nothing behind
+                seed_config()
+        except Exception:
+            pass
         sys.exit(0)
     main()

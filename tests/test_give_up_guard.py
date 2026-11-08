@@ -6,10 +6,7 @@ HOOK = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "hooks", "
 
 
 def run(payload, env_extra=None):
-    env = {k: v for k, v in os.environ.items() if k not in ("CLAUDE_CODE_ENTRYPOINT", "XDG_CONFIG_HOME")
-           and not k.startswith(("GIVE_UP_GUARD_", "CLAUDE_PLUGIN_OPTION_"))}
-    env["HOME"] = env["USERPROFILE"] = tempfile.mkdtemp()  # no user patterns or settings
-    env.update(env_extra or {})
+    env = seed_env(**(env_extra or {}))  # no user patterns or settings
     p = subprocess.run([sys.executable, HOOK], input=json.dumps(payload), capture_output=True, text=True, env=env)
     out = p.stdout.strip()
     return p.returncode, (json.loads(out) if out else None)
@@ -126,6 +123,42 @@ def seed_checks():
     r = subprocess.run([sys.executable, HOOK, "--seed"], capture_output=True, text=True, cwd=proj,
                        env=seed_env(GIVE_UP_GUARD_CONFIG="rel-config.json"))
     check("relative GIVE_UP_GUARD_CONFIG is not seeded into the project", r.returncode == 0 and os.listdir(proj) == [])
+
+    # a relative GIVE_UP_GUARD_CONFIG or XDG_CONFIG_HOME is not read from the project folder either
+    proj = tempfile.mkdtemp()
+    os.makedirs(os.path.join(proj, "give-up-guard"))
+    for rel in ("rel-config.json", os.path.join("give-up-guard", "config.json")):
+        with open(os.path.join(proj, rel), "w") as f:
+            json.dump({"reasons": {"not_checked": "PLANTED"}}, f)
+    for extra in ({"GIVE_UP_GUARD_CONFIG": "rel-config.json"}, {"XDG_CONFIG_HOME": "."}):
+        p = subprocess.run([sys.executable, HOOK], input=json.dumps(msg("Not checked: the log.")), capture_output=True,
+                           text=True, cwd=proj, env=seed_env(**extra))
+        out = json.loads(p.stdout or "null")
+        check(f"relative {list(extra)[0]} is not read from the project",
+              bool(out) and out["reason"].startswith("You listed"), p.stdout)
+
+    # ~ in GIVE_UP_GUARD_CONFIG (settings.json env is not expanded by a shell) is the home folder
+    env = seed_env(GIVE_UP_GUARD_CONFIG="~/gug/mine.json")
+    seed(env)
+    made = os.path.join(env["HOME"], "gug", "mine.json")
+    check("~ in GIVE_UP_GUARD_CONFIG: seeded in the home folder", os.path.exists(made))
+    with open(made, "w") as f:
+        json.dump({"secrets": True}, f)
+    p = subprocess.run([sys.executable, HOOK], input=json.dumps(msg("What is your password for the dashboard?")),
+                       capture_output=True, text=True, env=env)
+    out = json.loads(p.stdout or "null")
+    check("~ in GIVE_UP_GUARD_CONFIG: the file is read",
+          bool(out) and out["reason"].startswith("Before asking the user"), p.stdout)
+
+    # a skipped headless run (`claude -p`) creates nothing, from either hook
+    env = seed_env(CLAUDE_CODE_ENTRYPOINT="sdk-cli")
+    seed(env)
+    seed(env, args=(), payload=json.dumps(msg("Done.")))
+    check("headless run (skipped): nothing seeded", not os.path.exists(os.path.join(env["HOME"], ".config")))
+    env = seed_env(CLAUDE_CODE_ENTRYPOINT="sdk-cli", CLAUDE_PLUGIN_OPTION_CHECK_HEADLESS="true")
+    seed(env)
+    check("headless run checked: seeded",
+          os.path.exists(os.path.join(env["HOME"], ".config", "give-up-guard", "config.json")))
 
     # existing -> byte-identical, same mtime
     for body in (b'{"secrets": true}', b"{not json", b""):
@@ -261,9 +294,8 @@ def main():
 
     for name, payload, env, want in CASES:
         if isinstance(payload, str):
-            env2 = {k: v for k, v in os.environ.items() if k not in ("CLAUDE_CODE_ENTRYPOINT", "XDG_CONFIG_HOME")}
-            env2["HOME"] = env2["USERPROFILE"] = tempfile.mkdtemp()  # never the real ~/.config
-            p = subprocess.run([sys.executable, HOOK], input=payload, capture_output=True, text=True, env=env2)
+            p = subprocess.run([sys.executable, HOOK], input=payload, capture_output=True, text=True,
+                               env=seed_env())  # never the real ~/.config or the developer's settings
             code, out = p.returncode, (p.stdout.strip() or None)
         else:
             code, out = run(payload, env)
