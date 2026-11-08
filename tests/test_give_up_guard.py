@@ -6,8 +6,9 @@ HOOK = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "hooks", "
 
 
 def run(payload, env_extra=None):
-    env = {k: v for k, v in os.environ.items() if k not in ("CLAUDE_CODE_ENTRYPOINT", "GIVE_UP_GUARD_PATTERNS")}
-    env["HOME"] = tempfile.mkdtemp()  # no user patterns
+    env = {k: v for k, v in os.environ.items() if k not in ("CLAUDE_CODE_ENTRYPOINT", "XDG_CONFIG_HOME")
+           and not k.startswith(("GIVE_UP_GUARD_", "CLAUDE_PLUGIN_OPTION_"))}
+    env["HOME"] = env["USERPROFILE"] = tempfile.mkdtemp()  # no user patterns or settings
     env.update(env_extra or {})
     p = subprocess.run([sys.executable, HOOK], input=json.dumps(payload), capture_output=True, text=True, env=env)
     out = p.stdout.strip()
@@ -93,6 +94,48 @@ def main():
     CASES.append(("string instead of list is one pattern", msg("Done. Ran the tests: 12 passed."),
                   folder("x.json", json.dumps({"not_checked": "no comprobado"})), None))
 
+    # your settings: <config dir>/config.json (XDG_CONFIG_HOME respected) or GIVE_UP_GUARD_CONFIG
+    def settings(cfg):
+        base = tempfile.mkdtemp()
+        os.makedirs(os.path.join(base, "give-up-guard"))
+        with open(os.path.join(base, "give-up-guard", "config.json"), "w", encoding="utf-8") as f:
+            f.write(cfg if isinstance(cfg, str) else json.dumps(cfg))
+        return {"XDG_CONFIG_HOME": base}
+    ask_pw, headless = msg("What is your password for the dashboard?"), {"CLAUDE_CODE_ENTRYPOINT": "sdk-cli"}
+    CASES.extend([
+        ("config secrets on", ask_pw, settings({"secrets": True}), "Before asking the user for this secret"),
+        ("env 0 beats config secrets", ask_pw, dict(settings({"secrets": True}), GIVE_UP_GUARD_SECRETS="0"), None),
+        ("config headless on", msg("Not checked: anything."), dict(settings({"headless": True}), **headless), "You listed"),
+        ("env 0 beats config headless", msg("Not checked: anything."),
+         dict(settings({"headless": True}), GIVE_UP_GUARD_HEADLESS="0", **headless), None),
+        ("plugin option secrets", ask_pw, {"CLAUDE_PLUGIN_OPTION_CHECK_SECRETS": "true"},
+         "Before asking the user for this secret"),
+        ("config false beats plugin option", ask_pw,
+         dict(settings({"secrets": False}), CLAUDE_PLUGIN_OPTION_CHECK_SECRETS="true"), None),
+        ("plugin option headless", msg("Not checked: anything."),
+         dict(CLAUDE_PLUGIN_OPTION_CHECK_HEADLESS="true", **headless), "You listed"),
+        ("custom reason replaces text", msg("Not checked: the log."),
+         settings({"reasons": {"not_checked": "Check it with mytool first."}}), "Check it with mytool first."),
+        ("reason suffix keeps the default text", msg("I can't upload the file. You'll need to open the site."),
+         settings({"reason_suffix": "Try tool-x and tool-y."}), "Before handing this task back"),
+        ("broken config file is ignored", msg("Not checked: the log."), settings("{not json"), "You listed"),
+        ("config that isn't an object is ignored", ask_pw, settings("[true]"), None),
+    ])
+    pbase = tempfile.mkdtemp()
+    os.makedirs(os.path.join(pbase, "give-up-guard", "patterns"))
+    with open(os.path.join(pbase, "give-up-guard", "patterns", "es.json"), "w") as f:
+        json.dump({"not_checked": ["no (verifique|comprobe)"]}, f)
+    CASES.append(("XDG patterns folder", msg("Listo. No verifiqué el log."), {"XDG_CONFIG_HOME": pbase}, "You listed"))
+    cfile = os.path.join(tempfile.mkdtemp(), "mine.json")
+    with open(cfile, "w") as f:
+        json.dump({"secrets": True}, f)
+    CASES.append(("GIVE_UP_GUARD_CONFIG path", ask_pw, {"GIVE_UP_GUARD_CONFIG": cfile},
+                  "Before asking the user for this secret"))
+    code, out = run(msg("I can't upload the file. You'll need to open the site."), settings({"reason_suffix": "Try tool-x."}))
+    ok = bool(out) and out["reason"].endswith("(give-up-guard: verify before you claim) Try tool-x.")
+    print(("PASS" if ok else "FAIL"), "-", "suffix goes at the end", "" if ok else f"(got {out!r})")
+    fails += not ok
+
     # the default data reason must not send Claude to a password manager
     code, out = run(msg("What is your email for the account?"))
     ok = code == 0 and out and "password manager" not in out["reason"]
@@ -111,7 +154,7 @@ def main():
                                                                and out.get("decision") == "block"))
         print(("PASS" if ok else "FAIL"), "-", name, "" if ok else f"(exit {code}, got {got!r})")
         fails += not ok
-    print(f"\n{len(CASES) + 1 - fails}/{len(CASES) + 1} passed")
+    print(f"\n{len(CASES) + 2 - fails}/{len(CASES) + 2} passed")
     sys.exit(1 if fails else 0)
 
 
