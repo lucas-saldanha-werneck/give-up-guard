@@ -49,7 +49,7 @@ hook loads and merges every `*.json` file in these folders:
 
 - the plugin's `patterns/` folder
 - each folder listed in `GIVE_UP_GUARD_PATTERNS` (separated by `:`, or `;` on Windows)
-- `~/.config/give-up-guard/patterns/`
+- `~/.config/give-up-guard/patterns/` (or `$XDG_CONFIG_HOME/give-up-guard/patterns/` when `XDG_CONFIG_HOME` is set)
 
 To add a language or a phrase, put a file in `~/.config/give-up-guard/patterns/`. For example,
 `es.json`:
@@ -73,7 +73,7 @@ flags like `(?i)` work.
 | `not_exists` | says something doesn't exist |
 | `searched` | says where it didn't find it (cancels rule 2) |
 | `asks_data` | asks the user for an email, login, token... |
-| `secret` | the data asked for is a secret (rule 3 skips it unless `GIVE_UP_GUARD_SECRETS=1`) |
+| `secret` | the data asked for is a secret (rule 3 skips it unless `secrets` is on, see below) |
 | `not_checked` | lists something as not checked |
 | `why_not` | gives a reason it can't be checked (cancels rule 4) |
 
@@ -81,13 +81,55 @@ The hook lowercases the text and strips accents before matching, so write `nao`,
 that isn't a valid JSON object, or a pattern that isn't a valid regular expression, is skipped, and
 the other patterns still apply.
 
-Environment variables:
+## Your settings
+
+Your own settings live outside the plugin, in a folder that plugin updates never touch:
+
+- `~/.config/give-up-guard/config.json` (or `$XDG_CONFIG_HOME/give-up-guard/config.json` when
+  `XDG_CONFIG_HOME` is set; on Windows `~` is your user folder, `%USERPROFILE%`)
+- or any file named by `GIVE_UP_GUARD_CONFIG`
+- your extra patterns go in `patterns/` in the same folder (see above)
+
+You don't have to create the file: the plugin writes it the first time a session starts (or the
+first time the hook runs), from [`config.example.json`](config.example.json), with every key at
+its default and a one-line note per key under `_doc`. That file behaves exactly like having no
+file: `secrets` and `headless` start as `null`, which means "use the `/config` option". Plugin
+updates never touch it, and an existing file is never overwritten, so edit it freely.
+
+Every key is optional. A missing or broken file means the defaults.
+
+```json
+{
+  "secrets": true,
+  "headless": false,
+  "reason_suffix": "Tools you have: my-search-cli, the team wiki, `pass` for secrets.",
+  "reasons": {
+    "asks_data": "Before asking me: grep the notes folder and the password manager. Then write 'Searched in: ...'."
+  }
+}
+```
+
+| Key | Type | Default | Effect |
+| --- | --- | --- | --- |
+| `secrets` | true/false/null | null (the `/config` option, off by default) | also block asks for a password, token or key. Claude is then told to look in the environment, a secrets file or a password manager it was given access to, if the task allows it, and never to print the secret |
+| `headless` | true/false/null | null (the `/config` option, off by default) | also check `claude -p` runs, which are skipped by default |
+| `reasons` | object | built-in texts | replaces the text Claude sees for a rule. Keys: `give_up`, `not_exists`, `asks_data`, `asks_secret`, `not_checked`. Use it to name the tools Claude should try, in your language |
+| `reason_suffix` | string | none | appended to every reason, built-in or yours |
+
+The two switches can also be set without the file:
+
+| Where | Example | Wins over |
+| --- | --- | --- |
+| environment variable | `GIVE_UP_GUARD_SECRETS=1`, `GIVE_UP_GUARD_HEADLESS=0` (`1` on, `0` off) | the file and `/config` |
+| `config.json` | `"secrets": true` | `/config` |
+| `/config` in Claude Code | *Also block asks for secrets*, *Also check claude -p runs* (stored by Claude Code in your `settings.json`, as `pluginConfigs`) | nothing |
+
+Other environment variables:
 
 | Variable | Effect |
 | --- | --- |
 | `GIVE_UP_GUARD_PATTERNS` | extra pattern folders, as above |
-| `GIVE_UP_GUARD_HEADLESS=1` | also check `claude -p` runs, which are skipped by default |
-| `GIVE_UP_GUARD_SECRETS=1` | also block asks for a password, token or key. Claude is then told to look in the environment, a secrets file or a password manager it was given access to, if the task allows it, and never to print the secret |
+| `GIVE_UP_GUARD_CONFIG` | path of the settings file, instead of the default above (absolute or starting with `~`; a relative path is ignored, so a project folder cannot bring its own settings) |
 
 ## How it works
 

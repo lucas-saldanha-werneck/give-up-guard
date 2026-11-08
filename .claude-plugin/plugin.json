@@ -1,6 +1,6 @@
 {
   "name": "give-up-guard",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "A Stop hook that sends Claude back to work when it ends a turn giving up, claiming something doesn't exist, asking you for data, or listing things as not checked, without having looked first.",
   "author": {
     "name": "Lucas Saldanha Werneck",
@@ -9,11 +9,46 @@
   "homepage": "https://github.com/lucas-saldanha-werneck/give-up-guard",
   "repository": "https://github.com/lucas-saldanha-werneck/give-up-guard",
   "license": "MIT",
+  "userConfig": {
+    "check_secrets": {
+      "type": "boolean",
+      "title": "Also block asks for secrets",
+      "description": "Also hold back answers that ask you for a password, token or key. A config.json value or GIVE_UP_GUARD_SECRETS wins over this."
+    },
+    "check_headless": {
+      "type": "boolean",
+      "title": "Also check claude -p runs",
+      "description": "Also check headless claude -p runs, which are skipped by default. A config.json value or GIVE_UP_GUARD_HEADLESS wins over this."
+    }
+  },
   "hooks": {
+    "SessionStart": [
+      {
+        "matcher": "startup",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3",
+            "args": [
+              "${CLAUDE_PLUGIN_ROOT}/hooks/give_up_guard.py",
+              "--seed"
+            ],
+            "timeout": 5
+          }
+        ]
+      }
+    ],
     "Stop": [
       {
         "hooks": [
-          { "type": "command", "command": "python3", "args": ["${CLAUDE_PLUGIN_ROOT}/hooks/give_up_guard.py"], "timeout": 10 }
+          {
+            "type": "command",
+            "command": "python3",
+            "args": [
+              "${CLAUDE_PLUGIN_ROOT}/hooks/give_up_guard.py"
+            ],
+            "timeout": 10
+          }
         ]
       }
     ]

@@ -12,8 +12,15 @@ It blocks the stop (and sends Claude a short instruction) when the last answer:
   4. lists something as "not checked" without saying why it can't be checked now.
 
 Patterns live in patterns/*.json (one file per language) and in any extra folder
-given by GIVE_UP_GUARD_PATTERNS or ~/.config/give-up-guard/patterns/. Text is
+given by GIVE_UP_GUARD_PATTERNS or <config dir>/patterns/. Text is
 lowercased and accents are stripped before matching, so write patterns without accents.
+
+Your settings live in <config dir>/config.json (or the file named by GIVE_UP_GUARD_CONFIG),
+created from config.example.json on first run (--seed, from SessionStart) and never overwritten,
+where <config dir> is $XDG_CONFIG_HOME/give-up-guard or ~/.config/give-up-guard. Plugin updates
+never touch that folder. Keys: headless, secrets (true/false; null = use /config), reasons (replace a reason text),
+reason_suffix (appended to every reason). Env GIVE_UP_GUARD_HEADLESS / GIVE_UP_GUARD_SECRETS
+(1 or 0) win over the file; the file wins over the plugin's /config options.
 
 Loop protection: never blocks when stop_hook_active is set (so at most once in a row).
 Fails silently: an error here must never stop a session.
@@ -46,13 +53,94 @@ REASON_NOT_CHECKED = (
     "file, run the command, read the real state). Keep on the list only what is impossible to check right "
     "now, and say why for each item. (give-up-guard: verify before you claim)")
 
+REASONS = {"give_up": REASON_GIVE_UP, "not_exists": REASON_NOT_EXISTS, "asks_data": REASON_ASKS,
+           "asks_secret": REASON_ASKS_SECRET, "not_checked": REASON_NOT_CHECKED}
+
+
+def _abs_env(name):
+    """An env var naming a path, with ~ expanded; "" when unset or relative. A relative path would be
+    taken from the session's folder, so each project you open could bring its own settings."""
+    value = os.path.expanduser((os.environ.get(name) or "").strip())
+    return value if os.path.isabs(value) else ""
+
+
+def config_dir():
+    base = _abs_env("XDG_CONFIG_HOME") or os.path.join(os.path.expanduser("~"), ".config")
+    return os.path.join(base, "give-up-guard")
+
+
+def config_path():
+    return _abs_env("GIVE_UP_GUARD_CONFIG") or os.path.join(config_dir(), "config.json")
+
+
+def headless_skipped(cfg):
+    """Headless runs (`claude -p`) are skipped unless `headless` is on."""
+    return os.environ.get("CLAUDE_CODE_ENTRYPOINT") == "sdk-cli" and not switch(cfg, "headless", "check_headless")
+
+
+def seed_config():
+    """Create the settings file from config.example.json if it does not exist yet (installing a plugin
+    runs no hook). Never overwrites or changes an existing file (O_EXCL), never raises, prints nothing.
+    Every value in the starter is the default, so it behaves like no file. True if it created the file."""
+    path = config_path()
+    try:
+        if os.path.lexists(path):  # config_path() is always absolute
+            return False
+        with open(os.path.join(os.path.dirname(HERE), "config.example.json"), "rb") as f:
+            data = f.read()
+        os.makedirs(os.path.dirname(path) or ".", exist_ok=True)
+        fd = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_EXCL | getattr(os, "O_BINARY", 0), 0o600)
+    except Exception:
+        return False
+    try:
+        with os.fdopen(fd, "wb") as f:
+            f.write(data)
+        return True
+    except Exception:
+        try:  # only the half-written file this call just created
+            os.remove(path)
+        except Exception:
+            pass
+        return False
+
+
+def load_config():
+    # A missing or broken file means defaults; it must never stop a session.
+    path = config_path()
+    try:
+        with open(path, encoding="utf-8") as f:
+            data = json.load(f)
+        return data if isinstance(data, dict) else {}
+    except Exception:
+        return {}
+
+
+def switch(cfg, key, option):
+    # env var (1/0) > config file (true/false) > plugin /config option (CLAUDE_PLUGIN_OPTION_*) > off
+    env = os.environ.get("GIVE_UP_GUARD_" + key.upper())
+    if env in ("1", "0"):
+        return env == "1"
+    if isinstance(cfg.get(key), bool):
+        return cfg[key]
+    return os.environ.get("CLAUDE_PLUGIN_OPTION_" + option.upper(), "").strip().lower() in ("1", "true", "yes")
+
+
+def reason_text(cfg, key):
+    custom = cfg.get("reasons")
+    text = custom.get(key) if isinstance(custom, dict) else None
+    text = text if isinstance(text, str) and text.strip() else REASONS[key]
+    suffix = cfg.get("reason_suffix")
+    if isinstance(suffix, str) and suffix.strip():
+        text = text + " " + suffix.strip()
+    return text
+
 
 def pattern_dirs():
     dirs = [os.path.join(os.path.dirname(HERE), "patterns")]
     extra = os.environ.get("GIVE_UP_GUARD_PATTERNS")
     if extra:
         dirs += extra.split(os.pathsep)
-    dirs.append(os.path.join(os.path.expanduser("~"), ".config", "give-up-guard", "patterns"))
+    dirs.append(os.path.join(config_dir(), "patterns"))
     return dirs
 
 
@@ -111,18 +199,19 @@ def unexcused(claim, excuses, t, skip=None):
     return False
 
 
-def pick_reason(t, P):
+def pick_reason(t, P, secrets=False):
+    """Returns the key of the first rule that matches (see REASONS), or None."""
     tried = [] if label_line(P["tried"], t) else [P["tried"]]
     if tried and unexcused(P["give_up"], tried + [P["human_only"]], t):
-        return REASON_GIVE_UP
+        return "give_up"
     if tried and not label_line(P["searched"], t) and unexcused(P["not_exists"], tried + [P["searched"]], t):
-        return REASON_NOT_EXISTS
+        return "not_exists"
     if tried and unexcused(P["asks_data"], tried, t, skip=P["secret"]):
-        return REASON_ASKS
-    if tried and os.environ.get("GIVE_UP_GUARD_SECRETS") == "1" and unexcused(P["asks_data"], tried, t):
-        return REASON_ASKS_SECRET
+        return "asks_data"
+    if tried and secrets and unexcused(P["asks_data"], tried, t):
+        return "asks_secret"
     if unexcused(P["not_checked"], [P["why_not"]], t):
-        return REASON_NOT_CHECKED
+        return "not_checked"
     return None
 
 
@@ -158,20 +247,29 @@ def main():
         d = json.load(sys.stdin)
         if d.get("stop_hook_active"):
             return
+        cfg = load_config()
         # Headless runs (`claude -p`) have no user to talk to; an extra turn would only
-        # spoil the output a script reads. Set GIVE_UP_GUARD_HEADLESS=1 to check them too.
-        if os.environ.get("CLAUDE_CODE_ENTRYPOINT") == "sdk-cli" and os.environ.get("GIVE_UP_GUARD_HEADLESS") != "1":
+        # spoil the output a script reads. Turn on `headless` to check them too.
+        if headless_skipped(cfg):
             return
+        seed_config()  # in case the SessionStart hook has not run yet
         # A quote is not a give-up: drop fenced code blocks (``` or ~~~, closed or running to the end),
         # then "...", “...” and `...`, before matching.
         t = re.sub(r"(?ms)^[ \t]*(`{3,}|~{3,})[^\n]*$.*?(?:^[ \t]*\1[`~]*[ \t]*$|\Z)", " ", norm(last_text(d)))
         t = re.sub(r'"[^"\n]*"|“[^”\n]*”|`[^`\n]*`', " ", t)
-        reason = pick_reason(t, load_patterns())
-        if reason:
-            print(json.dumps({"decision": "block", "reason": reason}, ensure_ascii=False))
+        key = pick_reason(t, load_patterns(), secrets=switch(cfg, "secrets", "check_secrets"))
+        if key:
+            print(json.dumps({"decision": "block", "reason": reason_text(cfg, key)}, ensure_ascii=False))
     except Exception:
         return
 
 
 if __name__ == "__main__":
+    if sys.argv[1:] == ["--seed"]:  # SessionStart hook: create your settings file on first run
+        try:
+            if not headless_skipped(load_config()):  # a skipped `claude -p` run leaves nothing behind
+                seed_config()
+        except Exception:
+            pass
+        sys.exit(0)
     main()

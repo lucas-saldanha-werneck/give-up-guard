@@ -1,0 +1,19 @@
+{
+  "_doc": {
+    "about": "give-up-guard settings. The plugin creates this file on first run; plugin updates never change it. Every value here is the default (same behavior as no file). Keys starting with _ are ignored. Extra pattern files go in patterns/ next to this file.",
+    "secrets": "true = also block asks for a password, token or key; false = never. null = use the /config option 'Also block asks for secrets' (off by default). GIVE_UP_GUARD_SECRETS=1/0 wins over this",
+    "headless": "true = also check claude -p runs; false = never. null = use the /config option 'Also check claude -p runs' (off by default). GIVE_UP_GUARD_HEADLESS=1/0 wins over this",
+    "reason_suffix": "Text appended to every reason Claude sees, e.g. the tools it should try. Empty = none",
+    "reasons": "Replaces the text Claude sees for a rule (give_up, not_exists, asks_data, asks_secret, not_checked). Empty = the built-in text"
+  },
+  "secrets": null,
+  "headless": null,
+  "reason_suffix": "",
+  "reasons": {
+    "give_up": "",
+    "not_exists": "",
+    "asks_data": "",
+    "asks_secret": "",
+    "not_checked": ""
+  }
+}
