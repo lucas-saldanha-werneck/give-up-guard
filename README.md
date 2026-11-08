@@ -90,6 +90,12 @@ Your own settings live outside the plugin, in a folder that plugin updates never
 - or any file named by `GIVE_UP_GUARD_CONFIG`
 - your extra patterns go in `patterns/` in the same folder (see above)
 
+You don't have to create the file: the plugin writes it the first time a session starts (or the
+first time the hook runs), from [`config.example.json`](config.example.json), with every key at
+its default and a one-line note per key under `_doc`. That file behaves exactly like having no
+file: `secrets` and `headless` start as `null`, which means "use the `/config` option". Plugin
+updates never touch it, and an existing file is never overwritten, so edit it freely.
+
 Every key is optional. A missing or broken file means the defaults.
 
 ```json
@@ -105,8 +111,8 @@ Every key is optional. A missing or broken file means the defaults.
 
 | Key | Type | Default | Effect |
 | --- | --- | --- | --- |
-| `secrets` | true/false | false | also block asks for a password, token or key. Claude is then told to look in the environment, a secrets file or a password manager it was given access to, if the task allows it, and never to print the secret |
-| `headless` | true/false | false | also check `claude -p` runs, which are skipped by default |
+| `secrets` | true/false/null | null (the `/config` option, off by default) | also block asks for a password, token or key. Claude is then told to look in the environment, a secrets file or a password manager it was given access to, if the task allows it, and never to print the secret |
+| `headless` | true/false/null | null (the `/config` option, off by default) | also check `claude -p` runs, which are skipped by default |
 | `reasons` | object | built-in texts | replaces the text Claude sees for a rule. Keys: `give_up`, `not_exists`, `asks_data`, `asks_secret`, `not_checked`. Use it to name the tools Claude should try, in your language |
 | `reason_suffix` | string | none | appended to every reason, built-in or yours |
 

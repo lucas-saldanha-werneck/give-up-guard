@@ -16,6 +16,7 @@ given by GIVE_UP_GUARD_PATTERNS or <config dir>/patterns/. Text is
 lowercased and accents are stripped before matching, so write patterns without accents.
 
 Your settings live in <config dir>/config.json (or the file named by GIVE_UP_GUARD_CONFIG),
+created from config.example.json on first run (--seed, from SessionStart) and never overwritten,
 where <config dir> is $XDG_CONFIG_HOME/give-up-guard or ~/.config/give-up-guard. Plugin updates
 never touch that folder. Keys: headless, secrets (booleans), reasons (replace a reason text),
 reason_suffix (appended to every reason). Env GIVE_UP_GUARD_HEADLESS / GIVE_UP_GUARD_SECRETS
@@ -61,9 +62,39 @@ def config_dir():
     return os.path.join(base, "give-up-guard")
 
 
+def config_path():
+    return os.environ.get("GIVE_UP_GUARD_CONFIG") or os.path.join(config_dir(), "config.json")
+
+
+def seed_config():
+    """Create the settings file from config.example.json if it does not exist yet (installing a plugin
+    runs no hook). Never overwrites or changes an existing file (O_EXCL), never raises, prints nothing.
+    Every value in the starter is the default, so it behaves like no file. True if it created the file."""
+    path = config_path()
+    try:
+        if os.path.lexists(path):
+            return False
+        with open(os.path.join(os.path.dirname(HERE), "config.example.json"), "rb") as f:
+            data = f.read()
+        os.makedirs(os.path.dirname(path) or ".", exist_ok=True)
+        fd = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_EXCL | getattr(os, "O_BINARY", 0), 0o600)
+    except Exception:
+        return False
+    try:
+        with os.fdopen(fd, "wb") as f:
+            f.write(data)
+        return True
+    except Exception:
+        try:  # only the half-written file this call just created
+            os.remove(path)
+        except Exception:
+            pass
+        return False
+
+
 def load_config():
     # A missing or broken file means defaults; it must never stop a session.
-    path = os.environ.get("GIVE_UP_GUARD_CONFIG") or os.path.join(config_dir(), "config.json")
+    path = config_path()
     try:
         with open(path, encoding="utf-8") as f:
             data = json.load(f)
@@ -204,6 +235,7 @@ def main():
         d = json.load(sys.stdin)
         if d.get("stop_hook_active"):
             return
+        seed_config()  # in case the SessionStart hook has not run yet
         cfg = load_config()
         # Headless runs (`claude -p`) have no user to talk to; an extra turn would only
         # spoil the output a script reads. Turn on `headless` to check them too.
@@ -221,4 +253,7 @@ def main():
 
 
 if __name__ == "__main__":
+    if sys.argv[1:] == ["--seed"]:  # SessionStart hook: create your settings file on first run
+        seed_config()
+        sys.exit(0)
     main()
