@@ -1,0 +1,52 @@
+{
+  "_comment": "Portuguese patterns. Text is lowercased and accents are stripped before matching (write 'nao', not 'não').",
+  "give_up": [
+    "nao consigo (fazer|abrir|acessar|anexar|baixar|enviar|criar|preencher|reiniciar|entrar|subir|logar|mandar)",
+    "nao tenho como (fazer|abrir|acessar|anexar|baixar|enviar|criar|preencher)",
+    "nao e possivel (fazer|acessar|baixar|preencher|enviar)",
+    "(voce|vc) (vai )?(precisa|precisara|tem que|pode) (abrir|clicar|enviar|subir|fazer|baixar|colocar|preencher|rodar|entrar|mandar|anexar|criar)",
+    "(faca|fazer) (isso )?(manualmente|a mao)",
+    "me (avise|diga|fala) quando (terminar|enviar|estiver)",
+    "(clique|aperte|toque) (em|no|na|o|a|com)\\b",
+    "instale .{0,40}(iphone|celular|app)",
+    "(entre|logue) (no|pelo) app",
+    "(desbloqueie|destrave) (a )?tela",
+    "tire (uma )?foto",
+    "cole (o |a |este |esse |esta |essa )?(texto|trecho|resposta)",
+    "(rode|execute|digite) .{0,40}(no seu|no teu) (mac|terminal|computador)"
+  ],
+  "tried": [
+    "tentei:",
+    "rotas tentadas",
+    "rotas que tentei",
+    "procurei em",
+    "busquei em"
+  ],
+  "human_only": [
+    "pagamento",
+    "pagar"
+  ],
+  "not_exists": [
+    "(comando|opcao|recurso|funcao|configuracao|flag|botao|app|api|endpoint|skill|plugin|atalho|menu)[^.\\n]{0,50}(nao existe|nao esta disponivel)",
+    "(nao existe|nao ha|nao tem)[^.\\n]{0,25}(comando|opcao|recurso|funcao|configuracao|flag|botao|app|api|endpoint|skill|plugin|atalho|menu)"
+  ],
+  "searched": [
+    "nao encontrei em"
+  ],
+  "asks_data": [
+    "me (passa|manda|envia|informa|diz) (o|a|seu|sua) (e-?mail|login|usuario|senha|codigo|token|chave|cnpj|cpf)",
+    "qual (e|eh) (o|a) (seu|sua) (e-?mail|login|usuario|senha|token|chave)"
+  ],
+  "not_checked": [
+    "nao (conferi|verifiquei|chequei|testei|olhei|rodei|abri|confirmei)"
+  ],
+  "why_not": [
+    "impossivel",
+    "sem acesso",
+    "depende d",
+    "so voce",
+    "precisa de voce",
+    "espera externa",
+    "aguardando (o|a) "
+  ]
+}

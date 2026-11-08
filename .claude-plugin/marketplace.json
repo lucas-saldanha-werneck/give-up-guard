@@ -1,0 +1,15 @@
+{
+  "name": "give-up-guard",
+  "description": "A Stop hook that makes Claude verify before it claims, gives up or hands work back to you.",
+  "owner": {
+    "name": "Lucas Saldanha Werneck",
+    "url": "https://github.com/lucas-saldanha-werneck"
+  },
+  "plugins": [
+    {
+      "name": "give-up-guard",
+      "source": "./",
+      "description": "A Stop hook that sends Claude back to work when it ends a turn giving up, claiming something doesn't exist, asking you for data, or listing things as not checked, without having looked first."
+    }
+  ]
+}

@@ -1,0 +1,61 @@
+{
+  "_comment": "English patterns. Text is lowercased and accents are stripped before matching. Each list is OR-ed with the same list in every other patterns file.",
+  "give_up": [
+    "you('ll| will)? (need|have) to (open|click|upload|send|do|download|fill|run|submit|create|log ?in|sign in|paste|install|restart|enter)",
+    "tell me .{0,25}when (it'?s )?(done|sent|ready|finished)",
+    "(i can'?t|i cannot|i'?m unable to|i am unable to|i'?m not able to) (do|attach|open|access|upload|download|send|create|fill|log ?in|sign in|reach|restart|submit|run|install)",
+    "do (it|this|that) manually",
+    "(finish|update|do|fill|set|upload|send|submit) (it |this |them )?by hand",
+    "please (click|tap|open|run|paste|unlock|take a (photo|screenshot))",
+    "(run|type|execute) .{0,40}in your (terminal|shell|computer|mac|pc)"
+  ],
+  "tried": [
+    "tried:",
+    "routes tried",
+    "what i tried",
+    "searched in",
+    "i searched",
+    "i looked in"
+  ],
+  "human_only": [
+    "captcha",
+    "2fa",
+    "two-factor",
+    "payment",
+    "qr code",
+    "biometr",
+    "touch id",
+    "face id"
+  ],
+  "not_exists": [
+    "there is no (command|option|feature|setting|flag|button|app|api|endpoint|skill|plugin|shortcut|menu|config)",
+    "(command|option|feature|setting|flag|button|api|endpoint|skill|plugin|shortcut|menu)[^.\\n]{0,40}(doesn'?t|does not|no longer) exist",
+    "(command|option|feature|setting|flag|button|api|endpoint|skill|plugin|shortcut|menu)[^.\\n]{0,40}(isn'?t|is not) (available|supported)"
+  ],
+  "searched": [
+    "(didn'?t|did not|couldn'?t|could not) find (it )?in"
+  ],
+  "asks_data": [
+    "what('?s| is) your (email|login|username|password|token|key|account)",
+    "(send|give|tell) me your (email|login|username|password|token|key|account)",
+    "can you (send|give|share) (me )?(your|the) (email|login|username|password|token|api key|key)"
+  ],
+  "not_checked": [
+    "i (did not|didn'?t|have not|haven'?t) (check|verify|test|look at|run|open|confirm)",
+    "not (yet )?(checked|verified|tested|confirmed)",
+    "\\b(unverified|untested)\\b"
+  ],
+  "why_not": [
+    "impossible",
+    "no access",
+    "without access",
+    "depends on",
+    "only you",
+    "needs you",
+    "requires",
+    "2fa",
+    "captcha",
+    "touch id",
+    "waiting (for|on)"
+  ]
+}
