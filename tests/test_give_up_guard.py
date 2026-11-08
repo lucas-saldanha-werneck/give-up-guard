@@ -27,6 +27,10 @@ CASES = [
     ("en give up + tried", msg("I can't upload the file.\nRoutes tried: API (403), CLI (missing)."), None, None),
     ("en give up human only", msg("You'll need to solve the captcha on the page."), None, None),
     ("pt give up", msg("Não consigo enviar. Você precisa abrir o site."), None, "Before handing this task back"),
+    # tapping an answer option is the user's decision, not a task handed back
+    ("pt toque na opcao is a decision", msg("Toque na opção que preferir."), None, None),
+    ("pt clique em Sim is a decision", msg("Para seguir, clique em Sim no botão abaixo."), None, None),
+    ("pt toque em app step still blocked", msg("Toque em Settings e depois em Privacy."), None, "Before handing this task back"),
     ("en not exists", msg("There is no option for that in the CLI."), None, "You said something doesn't exist"),
     ("pt not exists", msg("Esse comando não existe nesta versão."), None, "You said something doesn't exist"),
     ("en not exists + searched", msg("There is no option for that. I didn't find it in --help."), None, None),

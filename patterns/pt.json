@@ -7,7 +7,7 @@
     "(voce|vc) (vai )?(precisa|precisara|tem que|pode) (abrir|clicar|enviar|subir|fazer|baixar|colocar|preencher|rodar|entrar|mandar|anexar|criar)",
     "(faca|fazer) (isso )?(manualmente|a mao)",
     "me (avise|diga|fala) quando (terminar|enviar|estiver)",
-    "(clique|aperte|toque) (em|no|na|o|a|com)\\b",
+    "(clique|aperte|toque) (em|no|na|o|a|com)\\b(?![^.\\n]{0,40}\\b(opcao|opcoes|botao|botoes|resposta|escolha|alternativa|sim|ok|aprovar|recusar)\\b)",
     "instale .{0,40}(iphone|celular|app)",
     "(entre|logue) (no|pelo) app",
     "(desbloqueie|destrave) (a )?tela",
