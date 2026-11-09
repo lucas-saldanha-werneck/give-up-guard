@@ -9,7 +9,7 @@
     {
       "name": "give-up-guard",
       "source": "./",
-      "description": "A Stop hook that sends Claude back to work when it ends a turn giving up, claiming something doesn't exist, asking you for data, or listing things as not checked, without having looked first."
+      "description": "Sends Claude back to check when it ends with \"didn't check\", gives up, or asks you for data it could find."
     }
   ]
 }
