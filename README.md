@@ -36,13 +36,13 @@ had looked and what it still could not confirm.
 ## Install
 
 ```
-/plugin marketplace add lucas-saldanha-werneck/give-up-guard
-/plugin install give-up-guard@give-up-guard
+/plugin marketplace add lucas-saldanha-werneck/claude-plugins
+/plugin install give-up-guard@lucas-plugins
 ```
 
 It needs `python3` (3.8 or newer) on your `PATH`. There are no other dependencies.
 
-## Config: languages and patterns
+## Languages and patterns
 
 The plugin ships patterns for English (`patterns/en.json`) and Portuguese (`patterns/pt.json`). The
 hook loads and merges every `*.json` file in these folders:
@@ -81,7 +81,7 @@ The hook lowercases the text and strips accents before matching, so write `nao`,
 that isn't a valid JSON object, or a pattern that isn't a valid regular expression, is skipped, and
 the other patterns still apply.
 
-## Your settings
+## Settings
 
 Your own settings live outside the plugin, in a folder that plugin updates never touch:
 
@@ -159,10 +159,10 @@ python3 tests/test_give_up_guard.py
 ## Uninstall
 
 ```
-/plugin uninstall give-up-guard@give-up-guard
+/plugin uninstall give-up-guard@lucas-plugins
 ```
 
-## Limits and what was not tested
+## Limits
 
 - It matches phrases, so it misses give-ups worded in ways the patterns don't cover, and it can
   block an answer that only looks like one. Add or narrow patterns in your own folder.
