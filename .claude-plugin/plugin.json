@@ -1,6 +1,6 @@
 {
   "name": "give-up-guard",
-  "version": "0.3.2",
+  "version": "0.3.3",
   "description": "Sends Claude back to check when it ends with \"didn't check\", gives up, or asks you for data it could find.",
   "author": {
     "name": "Lucas Saldanha Werneck",
