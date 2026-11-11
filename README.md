@@ -37,7 +37,7 @@ had looked and what it still could not confirm.
 
 ```
 /plugin marketplace add lucas-saldanha-werneck/claude-plugins
-/plugin install give-up-guard@lucas-plugins
+/plugin install give-up-guard@lucas-tools
 ```
 
 It needs `python3` (3.8 or newer) on your `PATH`. There are no other dependencies.
@@ -159,7 +159,7 @@ python3 tests/test_give_up_guard.py
 ## Uninstall
 
 ```
-/plugin uninstall give-up-guard@lucas-plugins
+/plugin uninstall give-up-guard@lucas-tools
 ```
 
 ## Limits
