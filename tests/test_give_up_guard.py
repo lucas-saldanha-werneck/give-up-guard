@@ -7,7 +7,8 @@ HOOK = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "hooks", "
 
 def run(payload, env_extra=None):
     env = seed_env(**(env_extra or {}))  # no user patterns or settings
-    p = subprocess.run([sys.executable, HOOK], input=json.dumps(payload), capture_output=True, text=True, env=env)
+    p = subprocess.run([sys.executable, HOOK], input=json.dumps(payload, ensure_ascii=False), capture_output=True,
+                       text=True, encoding="utf-8", env=env)  # Claude Code sends UTF-8 on every platform
     out = p.stdout.strip()
     return p.returncode, (json.loads(out) if out else None)
 
@@ -68,6 +69,24 @@ CASES = [
     ("long fence with inner fence ignored", msg("Example:\n````md\n```\nx\n```\nNot tested yet.\n````\nDone."), None, None),
     ("unclosed fence ignored", msg("Example:\n```\nNot checked: the deploy log."), None, None),
     ("text after a fence still counts", msg("```\nexample\n```\nNot checked: the deploy log."), None, "You listed"),
+    # GUG-06: straight quotes used as inches are not a quotation
+    ("inch marks don't hide a claim", msg('I bought the 27" one. Not checked: the deploy log. The 32" also fits.'),
+     None, "You listed"),
+    ("quoted phrase still ignored", msg('The header says "not checked" and "untested" in it.'), None, None),
+    # GUG-01: not running something the user forbade is a reason, not a slip
+    ("en user forbade running", msg("I did not run the tests because you explicitly asked me not to run commands."),
+     None, None),
+    ("en user told not to", msg("Not tested: the deploy script, you told me not to touch production."), None, None),
+    ("pt usuario proibiu", msg("Não rodei os testes porque você pediu para não rodar comandos."), None, None),
+    ("pt voce proibiu", msg("Não testei o envio: você me proibiu de enviar."), None, None),
+    # GUG-02: asking the user to review and send a draft is an approval step, not a give-up
+    ("pt revise e envie", msg("Rascunho pronto. Revise e, se estiver ok, você precisa enviar pelo Gmail."), None, None),
+    ("en send after reviewing", msg("Draft is ready; you will need to send it after reviewing."), None, None),
+    ("en approve then send", msg("Here is the draft. Once you approve it, you'll need to send it from your account."),
+     None, None),
+    ("pt revisei doesn't excuse a give-up", msg("Não consigo enviar o arquivo. Revisei o texto."), None, "Before"),
+    ("give-up without review still blocked", msg("I can't send the email. You'll need to send it yourself."),
+     None, "Before handing this task back"),
 ]
 
 
@@ -144,6 +163,17 @@ def seed_checks():
         out = json.loads(p.stdout or "null")
         check(f"relative {list(extra)[0]} is not read from the project",
               bool(out) and out["reason"].startswith("You listed"), p.stdout)
+
+    # GUG-05: a relative GIVE_UP_GUARD_PATTERNS folder is not read from the project folder either
+    proj = tempfile.mkdtemp()
+    os.makedirs(os.path.join(proj, "pats"))
+    with open(os.path.join(proj, "pats", "x.json"), "w") as f:
+        json.dump({"why_not": ["the log"]}, f)  # would excuse the claim below
+    p = subprocess.run([sys.executable, HOOK], input=json.dumps(msg("Not checked: the log.")), capture_output=True,
+                       text=True, cwd=proj, env=seed_env(GIVE_UP_GUARD_PATTERNS="pats"))
+    out = json.loads(p.stdout or "null")
+    check("relative GIVE_UP_GUARD_PATTERNS is not read from the project",
+          bool(out) and out["reason"].startswith("You listed"), p.stdout)
 
     # ~ in GIVE_UP_GUARD_CONFIG (settings.json env is not expanded by a shell) is the home folder
     env = seed_env(GIVE_UP_GUARD_CONFIG="~/gug/mine.json")
@@ -232,6 +262,22 @@ def main():
     with open(tpath, "w") as f:
         f.write(json.dumps({"type": "assistant", "message": {"content": [{"type": "text", "text": "Not tested yet."}]}}) + "\n")
     CASES.append(("transcript fallback", {"transcript_path": tpath}, None, "You listed"))
+    # GUG-03: the transcript is UTF-8 even when the system encoding is not (Windows cp1252, C locale)
+    upath = os.path.join(tdir, "u.jsonl")
+    with open(upath, "w", encoding="utf-8") as f:
+        f.write(json.dumps({"type": "assistant", "message": {"content": [
+            {"type": "text", "text": "Pronto. Não conferi o arquivo final."}]}}, ensure_ascii=False) + "\n")
+    ascii_env = {"PYTHONUTF8": "0", "PYTHONCOERCECLOCALE": "0", "LC_ALL": "C", "LANG": "C"}
+    CASES.append(("utf-8 transcript under a non-UTF-8 locale", {"transcript_path": upath}, ascii_env, "You listed"))
+    CASES.append(("utf-8 stdin under a non-UTF-8 locale", msg("Pronto. Não conferi o arquivo final."), ascii_env,
+                  "You listed"))
+    # GUG-05: a relative or ~ GIVE_UP_GUARD_PATTERNS entry
+    hdir = tempfile.mkdtemp()
+    os.makedirs(os.path.join(hdir, "pats"))
+    with open(os.path.join(hdir, "pats", "es.json"), "w") as f:
+        json.dump({"not_checked": ["no comprobado"]}, f)
+    CASES.append(("~ in GIVE_UP_GUARD_PATTERNS is the home folder", msg("Listo. No comprobado el log."),
+                  {"HOME": hdir, "USERPROFILE": hdir, "GIVE_UP_GUARD_PATTERNS": "~/pats"}, "You listed"))
     # extra pattern folder (another language)
     pdir = tempfile.mkdtemp()
     with open(os.path.join(pdir, "es.json"), "w") as f:
@@ -277,6 +323,8 @@ def main():
         ("reason suffix keeps the default text", msg("I can't upload the file. You'll need to open the site."),
          settings({"reason_suffix": "Try tool-x and tool-y."}), "Before handing this task back"),
         ("broken config file is ignored", msg("Not checked: the log."), settings("{not json"), "You listed"),
+        ("config with a BOM is read", ask_pw, settings("\ufeff" + json.dumps({"secrets": True})),
+         "Before asking the user for this secret"),
         ("config that isn't an object is ignored", ask_pw, settings("[true]"), None),
     ])
     pbase = tempfile.mkdtemp()
