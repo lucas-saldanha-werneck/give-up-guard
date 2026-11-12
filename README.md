@@ -16,8 +16,8 @@ The hook blocks the stop when the final answer does one of these things:
 3. It asks you for data (email, login, username...) without saying where it looked first. The
    hook tells Claude to look in project files, notes, config and its tools. Asking you for a
    secret (password, token, API key, PIN) is let through by default, so the hook never pushes
-   Claude to go and fetch a credential on its own. Set `GIVE_UP_GUARD_SECRETS=1` to check those
-   asks too.
+   Claude to go and fetch a credential on its own (a sentence that asks for a secret is let through
+   by rules 1 and 2 as well). Set `GIVE_UP_GUARD_SECRETS=1` to check those asks too.
 4. It lists something as not checked without saying why it can't be checked now.
 
 ## What Claude sees
@@ -73,7 +73,7 @@ flags like `(?i)` work.
 | `not_exists` | says something doesn't exist |
 | `searched` | says where it didn't find it (cancels rule 2) |
 | `asks_data` | asks the user for an email, login, token... |
-| `secret` | the data asked for is a secret (rule 3 skips it unless `secrets` is on, see below) |
+| `secret` | the data asked for is a secret (rules 1 to 3 skip a sentence that asks for one unless `secrets` is on, see below) |
 | `not_checked` | lists something as not checked |
 | `why_not` | gives a reason it can't be checked (cancels rule 4) |
 

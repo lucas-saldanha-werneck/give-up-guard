@@ -202,9 +202,13 @@ def unexcused(claim, excuses, t, skip=None):
 def pick_reason(t, P, secrets=False):
     """Returns the key of the first rule that matches (see REASONS), or None."""
     tried = [] if label_line(P["tried"], t) else [P["tried"]]
-    if tried and unexcused(P["give_up"], tried + [P["human_only"]], t):
+    # Without the secrets switch, a sentence that asks for a secret is let through by every rule,
+    # not only asks_data ("Please paste your password." also reads like a hand-off).
+    skip = None if secrets else P["secret"]
+    if tried and unexcused(P["give_up"], tried + [P["human_only"]], t, skip=skip):
         return "give_up"
-    if tried and not label_line(P["searched"], t) and unexcused(P["not_exists"], tried + [P["searched"]], t):
+    if tried and not label_line(P["searched"], t) and \
+            unexcused(P["not_exists"], tried + [P["searched"]], t, skip=skip):
         return "not_exists"
     if tried and unexcused(P["asks_data"], tried, t, skip=P["secret"]):
         return "asks_data"
