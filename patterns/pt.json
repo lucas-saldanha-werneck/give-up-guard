@@ -24,7 +24,13 @@
   ],
   "human_only": [
     "pagamento",
-    "pagar"
+    "pagar",
+    "\\brevise\\b",
+    "\\brevisar\\b",
+    "\\baprove\\b",
+    "\\baprovar\\b",
+    "aprovacao",
+    "se estiver (ok|certo|bom)"
   ],
   "not_exists": [
     "(comando|opcao|recurso|funcao|configuracao|flag|botao|app|api|endpoint|skill|plugin|atalho|menu)[^.\\n]{0,50}(nao existe|nao esta disponivel)",
@@ -55,6 +61,9 @@
     "so voce",
     "precisa de voce",
     "espera externa",
-    "aguardando (o|a) "
+    "aguardando (o|a) ",
+    "(voce|vc) (me )?(pediu|disse|mandou) (para |pra )?nao",
+    "(voce|vc) (me )?proibiu",
+    "a seu pedido"
   ]
 }

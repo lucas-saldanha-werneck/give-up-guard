@@ -25,7 +25,12 @@
     "qr code",
     "biometr",
     "touch id",
-    "face id"
+    "face id",
+    "after review",
+    "once you('ve| have)? (reviewed|approved)",
+    "(review|approve) (it|this|the draft|the text)",
+    "if you approve",
+    "your approval"
   ],
   "not_exists": [
     "there is no (command|option|feature|setting|flag|button|app|api|endpoint|skill|plugin|shortcut|menu|config)",
@@ -65,6 +70,10 @@
     "2fa",
     "captcha",
     "touch id",
-    "waiting (for|on)"
+    "waiting (for|on)",
+    "you (explicitly )?(asked|told) me not to",
+    "you (said|asked) not to",
+    "you forbade",
+    "per your (request|instruction)"
   ]
 }

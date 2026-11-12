@@ -11,14 +11,15 @@ The hook blocks the stop when the final answer does one of these things:
 
 1. It hands the task back to you ("I can't upload it", "you'll need to click...") without listing
    the routes it tried. Steps only a human can do (captcha, 2FA, payment, QR code, biometrics,
-   Touch ID, Face ID) are let through.
+   Touch ID, Face ID, reviewing or approving a draft before it goes out) are let through.
 2. It says a command, option or feature doesn't exist without saying where it looked.
 3. It asks you for data (email, login, username...) without saying where it looked first. The
    hook tells Claude to look in project files, notes, config and its tools. Asking you for a
    secret (password, token, API key, PIN) is let through by default, so the hook never pushes
    Claude to go and fetch a credential on its own (a sentence that asks for a secret is let through
    by rules 1 and 2 as well). Set `GIVE_UP_GUARD_SECRETS=1` to check those asks too.
-4. It lists something as not checked without saying why it can't be checked now.
+4. It lists something as not checked without saying why it can't be checked now. "You asked me not
+   to run it" counts as a reason.
 
 ## What Claude sees
 
@@ -27,7 +28,7 @@ and Claude gets this message and keeps working:
 
 ```
 Stop hook feedback:
-You listed something as not checked. Check now whatever you can with the tools you have (open the file, run the command, read the real state). Keep on the list only what is impossible to check right now, and say why for each item. (give-up-guard: verify before you claim)
+You listed something as not checked. Check now whatever you can with the tools you have (open the file, run the command, read the real state). Keep on the list only what is impossible to check right now, and say why for each item. If the user told you not to run or touch something, respect that: do not run it, keep it on the list and say the user asked you not to. (give-up-guard: verify before you claim)
 ```
 
 In a test run, Claude then searched for the migration files and rewrote the answer to say where it
@@ -48,7 +49,8 @@ The plugin ships patterns for English (`patterns/en.json`) and Portuguese (`patt
 hook loads and merges every `*.json` file in these folders:
 
 - the plugin's `patterns/` folder
-- each folder listed in `GIVE_UP_GUARD_PATTERNS` (separated by `:`, or `;` on Windows)
+- each folder listed in `GIVE_UP_GUARD_PATTERNS` (separated by `:`, or `;` on Windows; absolute or
+  starting with `~`, a relative folder is ignored)
 - `~/.config/give-up-guard/patterns/` (or `$XDG_CONFIG_HOME/give-up-guard/patterns/` when `XDG_CONFIG_HOME` is set)
 
 To add a language or a phrase, put a file in `~/.config/give-up-guard/patterns/`. For example,
@@ -69,7 +71,7 @@ flags like `(?i)` work.
 | --- | --- |
 | `give_up` | hands the task back to the user |
 | `tried` | the answer lists routes tried or places searched (cancels rules 1 to 3) |
-| `human_only` | a step only a human can do (cancels rule 1) |
+| `human_only` | a step only a human can do, such as a captcha or approving a draft (cancels rule 1) |
 | `not_exists` | says something doesn't exist |
 | `searched` | says where it didn't find it (cancels rule 2) |
 | `asks_data` | asks the user for an email, login, token... |
@@ -136,7 +138,8 @@ Other environment variables:
 When Claude tries to stop, the hook reads the final answer (`last_assistant_message`, or the last
 assistant text in the transcript if that field is missing). It removes fenced code blocks (three or
 more backticks or tildes, including a fence left open at the end), then text inside double quotes, curly double quotes and
-backticks, so quoting a phrase or an example doesn't count. It then checks the four rules
+backticks, so quoting a phrase or an example doesn't count. A straight double quote right after a
+letter or digit (an inch mark, as in `27"`) does not start a quote. It then checks the four rules
 in order and returns `{"decision": "block", "reason": ...}` for the first one that matches.
 
 A phrase that cancels a rule only counts near the claim it excuses: in the same sentence or line, or

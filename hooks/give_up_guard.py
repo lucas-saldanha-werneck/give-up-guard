@@ -34,8 +34,9 @@ REASON_GIVE_UP = (
     "Before handing this task back to the user: did you try at least two different routes and look for "
     "a tool that could do it (CLI, API, installed skills or MCP servers, docs, issue trackers, project notes)? "
     "If you did, rewrite the answer with a line 'Routes tried:' listing each route and the real error. "
-    "If you didn't, try now. Hand back only steps that truly need a human (captcha, 2FA, payment) and say why. "
-    "(give-up-guard: verify before you claim)")
+    "If you didn't, try now. Hand back only steps that truly need a human (captcha, 2FA, payment, approving "
+    "something before it goes out) and say why. Never send, publish, pay or delete anything the user has not "
+    "approved just to avoid handing it back. (give-up-guard: verify before you claim)")
 REASON_NOT_EXISTS = (
     "You said something doesn't exist. Look now (official docs, `--help`, command lists, config files, "
     "project notes). Then write 'Searched in: ...', or change the claim to "
@@ -51,7 +52,8 @@ REASON_ASKS_SECRET = (
 REASON_NOT_CHECKED = (
     "You listed something as not checked. Check now whatever you can with the tools you have (open the "
     "file, run the command, read the real state). Keep on the list only what is impossible to check right "
-    "now, and say why for each item. (give-up-guard: verify before you claim)")
+    "now, and say why for each item. If the user told you not to run or touch something, respect that: do not "
+    "run it, keep it on the list and say the user asked you not to. (give-up-guard: verify before you claim)")
 
 REASONS = {"give_up": REASON_GIVE_UP, "not_exists": REASON_NOT_EXISTS, "asks_data": REASON_ASKS,
            "asks_secret": REASON_ASKS_SECRET, "not_checked": REASON_NOT_CHECKED}
@@ -108,7 +110,7 @@ def load_config():
     # A missing or broken file means defaults; it must never stop a session.
     path = config_path()
     try:
-        with open(path, encoding="utf-8") as f:
+        with open(path, encoding="utf-8-sig") as f:  # -sig: a file saved with a BOM (Windows Notepad)
             data = json.load(f)
         return data if isinstance(data, dict) else {}
     except Exception:
@@ -137,9 +139,11 @@ def reason_text(cfg, key):
 
 def pattern_dirs():
     dirs = [os.path.join(os.path.dirname(HERE), "patterns")]
-    extra = os.environ.get("GIVE_UP_GUARD_PATTERNS")
-    if extra:
-        dirs += extra.split(os.pathsep)
+    # Like the other path variables: ~ expanded, relative entries ignored (see _abs_env).
+    for d in (os.environ.get("GIVE_UP_GUARD_PATTERNS") or "").split(os.pathsep):
+        d = os.path.expanduser(d.strip())
+        if os.path.isabs(d):
+            dirs.append(d)
     dirs.append(os.path.join(config_dir(), "patterns"))
     return dirs
 
@@ -231,7 +235,7 @@ def last_text(d):
     if not path:
         return ""
     last = ""
-    with open(path, errors="ignore") as f:
+    with open(path, encoding="utf-8", errors="ignore") as f:
         for line in f:
             try:
                 e = json.loads(line)
@@ -248,7 +252,7 @@ def last_text(d):
 
 def main():
     try:
-        d = json.load(sys.stdin)
+        d = json.loads(sys.stdin.buffer.read().decode("utf-8", errors="replace"))  # UTF-8, whatever the locale
         if d.get("stop_hook_active"):
             return
         cfg = load_config()
@@ -260,10 +264,13 @@ def main():
         # A quote is not a give-up: drop fenced code blocks (``` or ~~~, closed or running to the end),
         # then "...", “...” and `...`, before matching.
         t = re.sub(r"(?ms)^[ \t]*(`{3,}|~{3,})[^\n]*$.*?(?:^[ \t]*\1[`~]*[ \t]*$|\Z)", " ", norm(last_text(d)))
-        t = re.sub(r'"[^"\n]*"|“[^”\n]*”|`[^`\n]*`', " ", t)
+        # A straight quote only opens after a non-word character and closes before one, hugging the words,
+        # so inch marks (a 27" screen ... the 32" one) don't swallow the text between them.
+        t = re.sub(r'(?<!\w)"(?=\S)[^"\n]*?(?<=\S)"(?!\w)|“[^”\n]*”|`[^`\n]*`', " ", t)
         key = pick_reason(t, load_patterns(), secrets=switch(cfg, "secrets", "check_secrets"))
         if key:
-            print(json.dumps({"decision": "block", "reason": reason_text(cfg, key)}, ensure_ascii=False))
+            # ASCII-only JSON (\u escapes): a custom reason with accents prints on any console encoding
+            print(json.dumps({"decision": "block", "reason": reason_text(cfg, key)}))
     except Exception:
         return
 
