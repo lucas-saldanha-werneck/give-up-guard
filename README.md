@@ -1,7 +1,21 @@
 # give-up-guard
 
+[![CI](https://github.com/lucas-saldanha-werneck/give-up-guard/actions/workflows/test.yml/badge.svg)](https://github.com/lucas-saldanha-werneck/give-up-guard/actions/workflows/test.yml)
+[![License](https://img.shields.io/github/license/lucas-saldanha-werneck/give-up-guard)](LICENSE)
+[![Version](https://img.shields.io/badge/version-0.3.6-blue)](CHANGELOG.md)
+
 A Claude Code Stop hook that sends Claude back to work once when it ends a turn without checking
 something it could have checked.
+
+[![give-up-guard demo: tap to open the video](https://github.com/user-attachments/assets/32918ebb-33bb-4127-89c0-84bb1de5be8f)](https://lucas-saldanha-werneck.github.io/give-up-guard/demo.mp4)
+
+<table>
+<tr>
+<td align="center"><img src="https://github.com/user-attachments/assets/c8f3f57f-5768-4ac1-987b-8a06989a24c1" alt="Claude says what it did not check" width="320"><br>Claude says what it did not check</td>
+<td align="center"><img src="https://github.com/user-attachments/assets/74c6ea88-9d82-4e77-878f-5654625c8b75" alt="The hook sends it back once" width="320"><br>The hook sends it back once</td>
+<td align="center"><img src="https://github.com/user-attachments/assets/25575501-0ce4-435f-9868-e4aeb99ea38a" alt="Claude checks before it gives up" width="320"><br>Claude checks before it gives up</td>
+</tr>
+</table>
 
 Models often stop early. They write "Not checked: the deploy log" when reading the log takes one
 command, or "you'll need to do this by hand" when a CLI could do it. A rule in `CLAUDE.md` helps,
@@ -188,3 +202,7 @@ python3 tests/test_give_up_guard.py
 MIT
 
 Built with Claude Code
+
+## Security
+
+See [SECURITY.md](SECURITY.md) for what this plugin accesses and how to report a vulnerability.
