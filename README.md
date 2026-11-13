@@ -11,9 +11,9 @@ something it could have checked.
 
 <table>
 <tr>
-<td align="center"><img src="https://github.com/user-attachments/assets/c8f3f57f-5768-4ac1-987b-8a06989a24c1" alt="Claude says what it did not check" width="320"><br>Claude says what it did not check</td>
-<td align="center"><img src="https://github.com/user-attachments/assets/74c6ea88-9d82-4e77-878f-5654625c8b75" alt="The hook sends it back once" width="320"><br>The hook sends it back once</td>
-<td align="center"><img src="https://github.com/user-attachments/assets/25575501-0ce4-435f-9868-e4aeb99ea38a" alt="Claude checks before it gives up" width="320"><br>Claude checks before it gives up</td>
+<td align="center"><img src="https://github.com/user-attachments/assets/c8f3f57f-5768-4ac1-987b-8a06989a24c1" alt="Claude reports done and names the check it skipped" width="320"><br>It says what it did not check</td>
+<td align="center"><img src="https://github.com/user-attachments/assets/74c6ea88-9d82-4e77-878f-5654625c8b75" alt="Sent back by the hook, Claude runs the check and says how" width="320"><br>Sent back once, it checks</td>
+<td align="center"><img src="https://github.com/user-attachments/assets/25575501-0ce4-435f-9868-e4aeb99ea38a" alt="Summary: Claude checks before it gives up" width="320"><br>The idea in short</td>
 </tr>
 </table>
 
