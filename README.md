@@ -34,6 +34,12 @@ You listed something as not checked. Check now whatever you can with the tools y
 In a test run, Claude then searched for the migration files and rewrote the answer to say where it
 had looked and what it still could not confirm.
 
+## Examples
+
+- Claude ends with `Done. Not checked: whether the migration ran.` The stop is blocked once and Claude goes to check (see above).
+- Claude ends with "you'll need to click upload yourself" and no routes tried: the stop is blocked once and Claude is told to try its tools first.
+- Claude ends with "I can't approve the draft for you" or a captcha step: it passes, because only a human can do those.
+
 ## Install
 
 ```
