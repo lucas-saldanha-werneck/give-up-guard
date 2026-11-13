@@ -1,5 +1,9 @@
 # give-up-guard
 
+[![CI](https://github.com/lucas-saldanha-werneck/give-up-guard/actions/workflows/test.yml/badge.svg)](https://github.com/lucas-saldanha-werneck/give-up-guard/actions/workflows/test.yml)
+[![License](https://img.shields.io/github/license/lucas-saldanha-werneck/give-up-guard)](LICENSE)
+[![Version](https://img.shields.io/badge/version-0.3.6-blue)](CHANGELOG.md)
+
 A Claude Code Stop hook that sends Claude back to work once when it ends a turn without checking
 something it could have checked.
 
@@ -188,3 +192,7 @@ python3 tests/test_give_up_guard.py
 MIT
 
 Built with Claude Code
+
+## Security
+
+See [SECURITY.md](SECURITY.md) for what this plugin accesses and how to report a vulnerability.
