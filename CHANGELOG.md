@@ -8,7 +8,9 @@ All notable changes to this plugin. Versions follow `.claude-plugin/plugin.json`
 
 ## 0.3.5 (2026-11-12)
 
-- Fix audit findings: checks the user forbade, approval hand-offs, UTF-8, BOM, relative pattern folders, inch marks.
+- A check the user said not to run is a valid reason; reviewing or approving a draft counts as a human step.
+- Read the transcript as UTF-8 whatever the locale; read config.json with a BOM.
+- `GIVE_UP_GUARD_PATTERNS`: expand `~`, ignore relative folders; straight quotes used as inch marks no longer hide text.
 
 ## 0.3.4 (2026-11-11)
 
@@ -16,15 +18,15 @@ All notable changes to this plugin. Versions follow `.claude-plugin/plugin.json`
 
 ## 0.3.3 (2026-11-11)
 
-- Maintenance: point to the catalog repo's new name, lucas-tools.
+- Point to the catalog repo's new name, `lucas-tools`.
 
 ## 0.3.2 (2026-11-11)
 
-- Maintenance: rename the marketplace to lucas-tools.
+- Catalog renamed to `lucas-tools`.
 
 ## 0.3.1 (2026-11-09)
 
-- Docs: one-line description, catalog install, heading names.
+- One-line description, catalog install steps, heading names.
 
 ## 0.3.0 (2026-11-08)
 
